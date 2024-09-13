@@ -8,9 +8,15 @@ import win32ui
 from wcwidth import wcswidth
 from datetime import datetime, timedelta
 import time
+import json
 
 base_interval = 16
 store_name = "喜湘湘特色菜"
+
+# 加载菜单数据
+def load_menu(filename):
+    with open(filename, 'r', encoding='utf-8') as f:
+        return json.load(f)
 
 ###
 def get_weekdays(start_date, end_date):
@@ -72,17 +78,17 @@ def generate_receipt(order):
     receipt_lines = [
         f"               {store_name}              ",
         "",
-        "******************************************",
+        "**********************************************",
         "",
         f"日期:{order['date']}",
         "",
         f"时间:{order['timestamp']}",
         "",
-        "------------------------------------------",
+        "--------------------------------------------",
         "",
-        "{:<12}{:<8}{:<8}{:<8}".format("商品", "数量", "单价", "总价"),
+        "{:<13}{:<10}{:<10}{:<8}".format("商品", "数量", "单价", "总价"),
         "",
-        "------------------------------------------"
+        "--------------------------------------------"
     ]
 
     # 添加每个菜品的信息
@@ -94,13 +100,13 @@ def generate_receipt(order):
         receipt_lines.append(f"{dish:<{a}}{quantity:<9}{unit_price:>6.2f}{total_price:>12.2f}")
     
     # 添加分隔线和总计
-    receipt_lines.append("------------------------------------------")
-    receipt_lines.append("------------------------------------------")
+    receipt_lines.append("--------------------------------------------")
+    receipt_lines.append("--------------------------------------------")
     receipt_lines.append(f"总计:{total_amount:.2f}")
     receipt_lines.append("")
     receipt_lines.append("谢谢惠顾，欢迎下次光临!")
-    receipt_lines.append("------------------------------------------")
-    receipt_lines.append("******************************************")
+    receipt_lines.append("--------------------------------------------")
+    receipt_lines.append("********************************************")
 
     # 将列表转换为字符串
     receipt_content = "\n".join(receipt_lines)
@@ -109,44 +115,17 @@ def generate_receipt(order):
 def print_receipt(menu_info):
     # 获取默认打印机
     printer_name = win32print.GetDefaultPrinter()
-    # print(receipt_text)
+    # 打印内容
+    receipt_text = generate_receipt(menu_info)
+    print(receipt_text)
     # 打开打印机
     hprinter = win32print.OpenPrinter(printer_name)
 
-
-    # try:
-    #     hjob = win32print.StartDocPrinter(hprinter, 1, ("Receipt", None, "RAW"))
-    #     try:
-    #         win32print.StartPagePrinter(hprinter)
-    #         # 打印内容
-    #         receipt_text = generate_receipt(menu_info)
-    #         print(receipt_text)
-    #         # ESC/POS指令
-    #         ESC = b'\x1b'
-    #         GS = b'\x1d'
-    #         cut_paper = GS + b'V' + b'\x01'  # 半切纸指令
-
-    #         # 打印文本
-    #         # win32print.WritePrinter(hprinter, receipt_text.encode('gb18030'))  # 使用GB18030编码避免中文乱码
-
-    #         # 发送切纸指令
-    #         # win32print.WritePrinter(hprinter, cut_paper)
-
-    #         # 结束打印页面
-    #         # win32print.EndPagePrinter(hprinter)
-    #     finally:
-    #         # 结束打印作业
-    #         win32print.EndDocPrinter(hprinter)
-    # finally:
-    #     # 关闭打印机
-    #     win32print.ClosePrinter(hprinter)
 
     try:
         hjob = win32print.StartDocPrinter(hprinter, 1, ("Receipt", None, "RAW"))
         try:
             win32print.StartPagePrinter(hprinter)
-            # 打印内容
-            receipt_text = generate_receipt(menu_info)
             # ESC/POS指令
             ESC = b'\x1b'
             GS = b'\x1d'
@@ -201,16 +180,18 @@ def print_order(order, check_random, timestamp, start_time, end_time):
         start_time_str = start_time.toString("yyyy-MM-dd")
         end_time_str = end_time.toString("yyyy-MM-dd")
         time_period = get_weekdays(start_time_str, end_time_str)
-        random_period = random.sample(time_period, 2)
-        print(time_period, random_period)
-        if time_period != []:
-            print(time_period)
+        if len(time_period) >= 2:
+            random_period = random.sample(time_period, 21)
             for i in random_period:
                 print_info["date"] = i
+                selected_dishes = random_menu()
                 print_info["meal_info"] = selected_dishes
                 print_info["timestamp"] = get_random_time()[1]
                 print(print_info["meal_info"])
                 print_receipt(print_info)
+        else:
+            print(time_period)
+            print("Error: Not enough weekdays in the selected period.")
     else:
         for item, quantity in order.items():
             print(f"{item}: {quantity}")
@@ -221,63 +202,11 @@ def print_order(order, check_random, timestamp, start_time, end_time):
             elif item in menu["主食"]:
                 selected_dishes[item] = [quantity, menu["主食"][item]]
         print_info["meal_info"] = selected_dishes
-        # 将 QDate 对象转换为字符串格式
         print_info["date"] = timestamp.toString("yyyy-MM-dd")
         print_info["timestamp"] = get_random_time()[1]
         print_receipt(print_info)
 
-# 菜单和价格
-menu = {
-    "中式炒菜": {
-        "宫保鸡丁": 30,
-        "鱼香肉丝": 25,
-        "麻婆豆腐": 20,
-        "回锅肉": 22,
-        "蒜蓉生菜": 18,
-        "红烧肉": 35,
-        "糖醋里脊": 30,
-        "清蒸鲈鱼": 43,
-        "酸辣土豆丝": 15,
-        "辣子鸡丁": 32,
-        "干煸四季豆": 20,
-        "红烧茄子": 18,
-        "黑椒牛柳": 42,
-        "孜然羊肉": 38,
-        "荷叶粉蒸排骨": 36,
-        "香菇鸡片": 28,
-        "西红柿炒蛋": 16,
-        "酸菜鱼": 38,
-        "水煮牛肉": 41,
-        "韭菜炒鸡蛋": 22,
-        "油焖大虾": 38,
-        "京酱肉丝": 30,
-        "虎皮青椒": 18,
-        "香菇滑鸡": 30,
-        "黄焖豆腐": 35,
-        "蚝油生菜": 18,
-        "蒜苗炒肉": 22,
-        "剁椒鱼头": 42,
-        "凉拌鸡丝": 20,
-        "魔芋空心菜": 18,
-        "豆角炒土豆": 28,
-        "东坡肉": 39,
-        "叫花鸭": 32,
-        "孜然羊肉": 38,
-        "香辣烤鱼": 48,
-        "清炒时蔬": 10,
-        "招牌凉粉": 10,
-    },
-    "饮料": {
-        "可乐": 48,
-        "雪碧": 10,
-        "果汁": 10,
-    },
-    "主食": {
-        "米饭": 48,
-        "面条": 10,
-        "玉米面": 10,
-    }
-}
+menu = load_menu('menu.json')
 
 def calculate_total(order):
     total = 0
