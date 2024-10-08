@@ -11,7 +11,7 @@ import time
 import json
 
 base_interval = 16
-store_name = "喜湘湘特色菜"
+store_name = "喜湘湘特色湘菜"
 
 # 加载菜单数据
 def load_menu(filename):
@@ -107,6 +107,8 @@ def generate_receipt(order):
     receipt_lines.append("谢谢惠顾，欢迎下次光临!")
     receipt_lines.append("--------------------------------------------")
     receipt_lines.append("********************************************")
+    receipt_lines.append("                                            ")
+    receipt_lines.append("                                            ")
 
     # 将列表转换为字符串
     receipt_content = "\n".join(receipt_lines)
@@ -173,12 +175,11 @@ def random_menu():
     return selected_dishes
 
 def print_order(order, check_random, timestamp, start_time, end_time):
-    selected_dishes = random_menu()
     print_info = {}
     if check_random:
-        # 将 QDate 对象转换为字符串格式
-        start_time_str = start_time.toString("yyyy-MM-dd")
-        end_time_str = end_time.toString("yyyy-MM-dd")
+        # 将 QDateTime 对象转换为字符串格式
+        start_time_str = start_time.toString("yyyy-MM-dd HH:mm:ss")
+        end_time_str = end_time.toString("yyyy-MM-dd HH:mm:ss")
         time_period = get_weekdays(start_time_str, end_time_str)
         if len(time_period) >= 2:
             random_period = random.sample(time_period, 21)
@@ -193,17 +194,20 @@ def print_order(order, check_random, timestamp, start_time, end_time):
             print(time_period)
             print("Error: Not enough weekdays in the selected period.")
     else:
+        selected_dishes = {}
         for item, quantity in order.items():
-            print(f"{item}: {quantity}")
+            # print(f"{item}: {quantity}")
             if item in menu["中式炒菜"]:
                 selected_dishes[item] = [quantity, menu["中式炒菜"][item]]
             elif item in menu["饮料"]:
                 selected_dishes[item] = [quantity, menu["饮料"][item]]
             elif item in menu["主食"]:
                 selected_dishes[item] = [quantity, menu["主食"][item]]
+                
         print_info["meal_info"] = selected_dishes
-        print_info["date"] = timestamp.toString("yyyy-MM-dd")
-        print_info["timestamp"] = get_random_time()[1]
+        # 将 QDateTime 对象转换为字符串格式
+        print_info["date"] = timestamp.toString("yyyy-MM-dd")  # 只有日期
+        print_info["timestamp"] = timestamp.toString("HH:mm:ss")  # 只有时间
         print_receipt(print_info)
 
 menu = load_menu('menu.json')
@@ -348,8 +352,7 @@ class RestaurantOrderApp(QWidget):
             store_name = self.shopNameEdit.text().strip()
         print(self.start_time.date(), self.end_time.date())
         # 直接传 self.checkbox.isChecked() 而不是 self.checkbox
-        print_order(self.order, self.checkbox.isChecked(), self.dateTimeEdit.date(), self.start_time.date(), self.end_time.date())
-# 假设的 calculate_total 函数
+        print_order(self.order, self.checkbox.isChecked(), self.dateTimeEdit.dateTime(), self.start_time.dateTime(), self.end_time.dateTime())
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     ex = RestaurantOrderApp()
